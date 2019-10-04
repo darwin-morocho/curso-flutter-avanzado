@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../api/auth_api.dart';
+import '../api/profile_api.dart';
 
 class SplashPage extends StatefulWidget {
   @override
@@ -9,10 +12,12 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage> {
   final _authAPI = AuthAPI();
+  final _profileAPI = ProfileAPI();
 
   @override
   void initState() {
     super.initState();
+
     this.check();
   }
 
@@ -20,7 +25,11 @@ class _SplashPageState extends State<SplashPage> {
     final token = await _authAPI.getAccessToken();
 
     if (token != null) {
+
+      final result = await _profileAPI.getUserInfo(context, token);
+      print(result.toString());
       Navigator.pushReplacementNamed(context, "home");
+
     } else {
       Navigator.pushReplacementNamed(context, "login");
     }
