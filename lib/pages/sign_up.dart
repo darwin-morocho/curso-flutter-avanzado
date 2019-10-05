@@ -40,7 +40,7 @@ class _SingUpPageState extends State<SingUpPage> {
 
       if (isOk) {
         print("REGISTER");
-        Navigator.pushNamed(context, "home");
+        Navigator.pushNamedAndRemoveUntil(context, 'splash', (_) => false);
       }
     }
   }

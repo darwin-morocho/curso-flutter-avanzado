@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (isOk) {
         print("LOGIN OK");
-        Navigator.pushNamed(context, "home");
+        Navigator.pushNamedAndRemoveUntil(context, 'splash', (_) => false);
       }
     }
   }
@@ -104,7 +104,8 @@ class _LoginPageState extends State<LoginPage> {
                               "Hello again.\nWelcome back",
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  fontSize: responsive.ip(2), fontWeight: FontWeight.w300),
+                                  fontSize: responsive.ip(2),
+                                  fontWeight: FontWeight.w300),
                             )
                           ],
                         ),
@@ -154,12 +155,14 @@ class _LoginPageState extends State<LoginPage> {
                                 minWidth: 350,
                               ),
                               child: CupertinoButton(
-                                padding: EdgeInsets.symmetric(vertical: responsive.ip(2)),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: responsive.ip(2)),
                                 color: Colors.pinkAccent,
                                 borderRadius: BorderRadius.circular(4),
                                 onPressed: () => _submit(),
                                 child: Text("Sign in",
-                                    style: TextStyle(fontSize: responsive.ip(2.5))),
+                                    style: TextStyle(
+                                        fontSize: responsive.ip(2.5))),
                               ),
                             ),
                             SizedBox(height: responsive.hp(2)),
@@ -168,7 +171,8 @@ class _LoginPageState extends State<LoginPage> {
                               children: <Widget>[
                                 Text("New to Friendly Desi?",
                                     style: TextStyle(
-                                        fontSize: responsive.ip(1.8), color: Colors.black54)),
+                                        fontSize: responsive.ip(1.8),
+                                        color: Colors.black54)),
                                 CupertinoButton(
                                   onPressed: () =>
                                       Navigator.pushNamed(context, "singup"),
