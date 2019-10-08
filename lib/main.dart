@@ -5,6 +5,7 @@ import 'pages/sign_up.dart';
 import 'pages/home.dart';
 import 'pages/splash.dart';
 import 'providers/me.dart';
+import 'providers/chat_provider.dart';
 
 void main() => runApp(MyApp());
 
@@ -15,7 +16,10 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          builder: (_)=>Me(),
+          builder: (_) => Me(),
+        ),
+        ChangeNotifierProvider(
+          builder: (_) => ChatProvider(),
         ),
       ],
       child: MaterialApp(
