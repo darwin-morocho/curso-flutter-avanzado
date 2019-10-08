@@ -18,12 +18,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _chatKey=GlobalKey<ChatState>();
+  final _chatKey = GlobalKey<ChatState>();
   Me _me;
   ChatProvider _chat;
   final _authAPI = AuthAPI();
   final _socketClient = SocketClient();
-
 
   @override
   void initState() {
@@ -48,6 +47,24 @@ class _HomePageState extends State<HomePage> {
           username: data['from']['username'],
           createdAt: DateTime.now());
       _chat.addMessage(message);
+      _chatKey.currentState.checkUnread();
+    };
+
+    _socketClient.onConnected = (data) {
+      final users = Map<String, dynamic>.from(data['connectedUsers']);
+      print("connected: ${users.length}");
+      _chat.counter = users.length;
+    };
+
+    _socketClient.onJoined = (data) {
+      print("joined: ${data.toString()}");
+      _chat.counter++;
+    };
+
+    _socketClient.onDisconnected = (data) {
+      if (_chat.counter > 0) {
+        _chat.counter--;
+      }
     };
   }
 
@@ -86,6 +103,10 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         brightness: Brightness.light,
+        title: Text(
+          "Connected (${_chat.counter})",
+          style: TextStyle(color: Colors.black),
+        ),
         actions: <Widget>[
           PopupMenuButton(
             icon: Icon(

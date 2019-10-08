@@ -18,7 +18,8 @@ class Chat extends StatefulWidget {
 }
 
 class ChatState extends State<Chat> {
-  var isTheEnd=false;
+  var _isTheEnd = false;
+  var unread = 0;
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
 
@@ -42,10 +43,25 @@ class ChatState extends State<Chat> {
   }
 
   goToEnd() {
-   Timer(Duration(milliseconds: 300),(){
-     _scrollController.animateTo(_scrollController.position.maxScrollExtent,
-         duration: Duration(milliseconds: 500), curve: Curves.linear);
-   });
+    setState(() {
+      unread = 0;
+    });
+    Timer(Duration(milliseconds: 300), () {
+      _scrollController.animateTo(_scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 500), curve: Curves.linear);
+    });
+  }
+
+  checkUnread() {
+    if (_scrollController.position.maxScrollExtent == 0) return;
+    if (_isTheEnd) {
+      goToEnd();
+    } else {
+      setState(() {
+        unread++;
+      });
+    }
+
   }
 
   Widget _Item(Message message) {
@@ -100,43 +116,99 @@ class ChatState extends State<Chat> {
       },
       child: Container(
         width: size.width,
-        child: Column(
+        child: Stack(
           children: <Widget>[
-            Expanded(
-              child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: widget.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = widget.messages[index];
-                    return _Item(message);
-                  }),
+            Column(
+              children: <Widget>[
+                Expanded(
+                  child: NotificationListener(
+                    child: ListView.builder(
+                        controller: _scrollController,
+                        itemCount: widget.messages.length,
+                        itemBuilder: (context, index) {
+                          final message = widget.messages[index];
+                          return _Item(message);
+                        }),
+                    onNotification: (t) {
+                      if (t is ScrollEndNotification) {
+                        if (_scrollController.offset >=
+                            _scrollController.position.maxScrollExtent) {
+                          _isTheEnd = true;
+                        } else {
+                          _isTheEnd = false;
+                        }
+                      }
+                      return false;
+                    },
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.all(10),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: _controller,
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                              color: Color(0xffd2d2d2),
+                              borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      CupertinoButton(
+                        onPressed: _onSend,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                        borderRadius: BorderRadius.circular(20),
+                        minSize: 30,
+                        color: Colors.blue,
+                        child: Text("Send"),
+                      ),
+                    ],
+                  ),
+                )
+              ],
             ),
-            Container(
-              padding: EdgeInsets.all(10),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: CupertinoTextField(
-                      controller: _controller,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: Color(0xffd2d2d2),
-                          borderRadius: BorderRadius.circular(20)),
+            unread > 0
+                ? Positioned(
+                    left: 10,
+                    bottom: 60,
+                    child: Stack(
+                      children: <Widget>[
+                        CupertinoButton(
+                          color: Color(0xffdddddd),
+                          borderRadius: BorderRadius.circular(30),
+                          padding: EdgeInsets.all(5),
+                          onPressed: goToEnd,
+                          child: Icon(
+                            Icons.arrow_downward,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            child: Center(
+                              child: Text(
+                                unread.toString(),
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 10),
+                              ),
+                            ),
+                            decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        )
+                      ],
                     ),
-                  ),
-                  SizedBox(width: 10),
-                  CupertinoButton(
-                    onPressed: _onSend,
-                    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                    borderRadius: BorderRadius.circular(20),
-                    minSize: 30,
-                    color: Colors.blue,
-                    child: Text("Send"),
-                  ),
-                ],
-              ),
-            )
+                  )
+                : Container()
           ],
         ),
       ),
