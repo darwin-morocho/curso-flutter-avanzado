@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_advanced_maps/api/nominatim.dart';
@@ -7,6 +6,7 @@ import 'package:flutter_advanced_maps/api/osrm.dart';
 import 'package:flutter_advanced_maps/models/reverse_result.dart';
 import 'package:flutter_advanced_maps/models/search_result.dart';
 import 'package:flutter_advanced_maps/models/service_location.dart';
+import 'package:flutter_advanced_maps/pages/home/map_utils.dart';
 import 'package:flutter_advanced_maps/pages/home/widgets/my_center_position.dart';
 import 'package:flutter_advanced_maps/pages/home/widgets/toolbar.dart';
 import 'package:flutter_advanced_maps/utils/geolocation_utils.dart';
@@ -44,6 +44,7 @@ class _HomePageState extends State<HomePage> {
 
   LatLng _centerPosition, _myPosition;
   ReverseResult _reverseResult;
+
   ReverseType _reverseType = ReverseType.origin;
 
   @override
@@ -60,15 +61,17 @@ class _HomePageState extends State<HomePage> {
 
       if (_reverseType == ReverseType.origin) {
         _origin = serviceLocation;
-        _markers[_originMarker.markerId] =
-            _originMarker.copyWith(positionParam: _origin.position);
+        _markers[_originMarker.markerId] = _originMarker.copyWith(
+            positionParam: _origin.position,
+            onTapParam: () => _onServiceMarkerPressed(ReverseType.origin));
         if (_destination == null) {
           _reverseType = ReverseType.destination;
         }
       } else {
         _destination = serviceLocation;
-        _markers[_destinationMarker.markerId] =
-            _destinationMarker.copyWith(positionParam: _destination.position);
+        _markers[_destinationMarker.markerId] = _destinationMarker.copyWith(
+            positionParam: _destination.position,
+            onTapParam: () => _onServiceMarkerPressed(ReverseType.destination));
       }
 
       setState(() {});
@@ -79,6 +82,40 @@ class _HomePageState extends State<HomePage> {
     };
 
     _osrm.onRoute = _onRoute;
+  }
+
+  _onServiceMarkerPressed(ReverseType reverseType) {
+    showCupertinoDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return CupertinoAlertDialog(
+            title: Text("Confirmación Requerida"),
+            content: Text(
+                "desea cambiar el ${reverseType == ReverseType.origin ? "origen" : "destino"} del servicio"),
+            actions: <Widget>[
+              CupertinoDialogAction(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text("NO"),
+              ),
+              CupertinoDialogAction(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (reverseType == ReverseType.origin) {
+                    _origin = null;
+                  } else {
+                    _destination = null;
+                  }
+                  _reverseType = reverseType;
+
+                  setState(() {});
+                },
+                child: Text("SI"),
+              )
+            ],
+          );
+        });
   }
 
   _onRoute(int status, dynamic data) {
@@ -95,7 +132,6 @@ class _HomePageState extends State<HomePage> {
         final center =
             LatLng(fitData['center']['lat'], fitData['center']['lng']);
         final zoom = fitData['zoom'] as double;
-
         _moveCamera(center, zoom: zoom);
 
         final polyline = Polyline(
@@ -218,6 +254,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void didUpdateWidget(Widget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final padding = MediaQuery.of(context).padding;
@@ -322,6 +363,57 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
+      ),
+    );
+  }
+}
+
+class WidgetAsMarker extends StatelessWidget {
+  final GlobalKey markerKey;
+  final String text;
+  final dotColor;
+
+  const WidgetAsMarker(
+      {Key key,
+      @required this.markerKey,
+      this.text = '',
+      @required this.dotColor})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return Positioned(
+      left: 0,
+      top: size.height,
+      child: RepaintBoundary(
+        key: markerKey,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 200),
+          child: Container(
+            decoration: BoxDecoration(
+                color: Colors.white, borderRadius: BorderRadius.circular(10)),
+            padding: EdgeInsets.all(5),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  Icons.brightness_1,
+                  size: 20,
+                  color: dotColor,
+                ),
+                SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(letterSpacing: 1, fontSize: 13),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
