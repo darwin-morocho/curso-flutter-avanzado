@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 
@@ -196,5 +198,12 @@ class MapUtils {
         .asUint8List();
 
     return bytes;
+  }
+
+  static Future<Uint8List> widgetToMarker(GlobalKey key) async {
+    RenderRepaintBoundary boundary = key.currentContext.findRenderObject();
+    final image = await boundary.toImage(pixelRatio: 3);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData.buffer.asUint8List();
   }
 }

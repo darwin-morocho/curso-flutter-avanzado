@@ -22,6 +22,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  GlobalKey _originGlobalKey = GlobalKey(), _destinationGlobalKey = GlobalKey();
   ServiceLocation _origin, _destination;
   Marker _originMarker = Marker(markerId: MarkerId("origin"));
   Marker _destinationMarker = Marker(markerId: MarkerId("destination"));
@@ -47,6 +48,8 @@ class _HomePageState extends State<HomePage> {
 
   ReverseType _reverseType = ReverseType.origin;
 
+  dynamic _route;
+
   @override
   void initState() {
     super.initState();
@@ -61,27 +64,45 @@ class _HomePageState extends State<HomePage> {
 
       if (_reverseType == ReverseType.origin) {
         _origin = serviceLocation;
-        _markers[_originMarker.markerId] = _originMarker.copyWith(
-            positionParam: _origin.position,
-            onTapParam: () => _onServiceMarkerPressed(ReverseType.origin));
+
         if (_destination == null) {
           _reverseType = ReverseType.destination;
         }
       } else {
         _destination = serviceLocation;
-        _markers[_destinationMarker.markerId] = _destinationMarker.copyWith(
-            positionParam: _destination.position,
-            onTapParam: () => _onServiceMarkerPressed(ReverseType.destination));
       }
 
       setState(() {});
 
       if (_origin != null && _destination != null) {
+        _drawOriginAndDestinationMarkers();
         _osrm.route(_origin.position, _destination.position);
       }
     };
 
     _osrm.onRoute = _onRoute;
+  }
+
+  _drawOriginAndDestinationMarkers() {
+    Timer(Duration(milliseconds: 300), () async {
+      final originBytes = await MapUtils.widgetToMarker(_originGlobalKey);
+      final destinationBytes =
+          await MapUtils.widgetToMarker(_destinationGlobalKey);
+
+      setState(() {
+        _markers[_originMarker.markerId] = _originMarker.copyWith(
+            positionParam: _origin.position,
+            iconParam: BitmapDescriptor.fromBytes(originBytes),
+            anchorParam: Offset(1, 1.3),
+            onTapParam: () => _onServiceMarkerPressed(ReverseType.origin));
+
+        _markers[_destinationMarker.markerId] = _destinationMarker.copyWith(
+            positionParam: _destination.position,
+            iconParam: BitmapDescriptor.fromBytes(destinationBytes),
+            anchorParam: Offset(0, 1.3),
+            onTapParam: () => _onServiceMarkerPressed(ReverseType.destination));
+      });
+    });
   }
 
   _onServiceMarkerPressed(ReverseType reverseType) {
@@ -108,7 +129,7 @@ class _HomePageState extends State<HomePage> {
                     _destination = null;
                   }
                   _reverseType = reverseType;
-
+                  _route = null;
                   setState(() {});
                 },
                 child: Text("SI"),
@@ -118,12 +139,12 @@ class _HomePageState extends State<HomePage> {
         });
   }
 
-  _onRoute(int status, dynamic data) {
-    print("$status");
-
+  _onRoute(int status, dynamic data) async {
     if (status == 200) {
       final routes = data['routes'] as List;
       if (routes.length > 0) {
+        _route = routes[0];
+
         final encodedPolyline = routes[0]['geometry'] as String;
         List<LatLng> points =
             GeolocationUtils.decodeEncodedPolyline(encodedPolyline);
@@ -140,10 +161,48 @@ class _HomePageState extends State<HomePage> {
             width: 5,
             color: Colors.cyan);
 
+        final greenBytes = await MapUtils.loadPinFromAsset(
+            'assets/green-circle.png',
+            width: 50);
+        final redBytes =
+            await MapUtils.loadPinFromAsset('assets/red-circle.png', width: 50);
+
+        final initialPoint = Marker(
+            markerId: MarkerId("initial-point"),
+            anchor: Offset(0.5, 0.5),
+            consumeTapEvents: false,
+            icon: BitmapDescriptor.fromBytes(greenBytes),
+            position: points[0]);
+
+        final endPoint = Marker(
+            markerId: MarkerId("end-point"),
+            anchor: Offset(0.5, 0.5),
+            consumeTapEvents: false,
+            icon: BitmapDescriptor.fromBytes(redBytes),
+            position: points[points.length - 1]);
+
         setState(() {
+          _markers[initialPoint.markerId] = initialPoint;
+          _markers[endPoint.markerId] = endPoint;
           _polylines[polyline.polylineId] = polyline;
         });
       }
+    } else {
+      showCupertinoDialog(
+          context: context,
+          builder: (context) {
+            return CupertinoAlertDialog(
+              content: Text(data.toString()),
+              actions: <Widget>[
+                CupertinoDialogAction(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text("OK"),
+                )
+              ],
+            );
+          });
     }
   }
 
@@ -186,23 +245,6 @@ class _HomePageState extends State<HomePage> {
   _moveCamera(LatLng position, {double zoom = 12}) {
     final cameraUpdate = CameraUpdate.newLatLngZoom(position, zoom);
     _mapController.animateCamera(cameraUpdate);
-  }
-
-  _onMarkerTap(String id) {
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return CupertinoAlertDialog(
-            title: Text("Click"),
-            content: Text("marker id $id"),
-            actions: <Widget>[
-              CupertinoDialogAction(
-                child: Text("OK"),
-                onPressed: () => Navigator.pop(context),
-              )
-            ],
-          );
-        });
   }
 
   _onCameraMoveStarted() {
@@ -258,6 +300,18 @@ class _HomePageState extends State<HomePage> {
     super.didUpdateWidget(oldWidget);
   }
 
+  _reset() {
+    _origin = null;
+    _destination = null;
+    _route = null;
+    _markers.clear();
+    _polylines.clear();
+    _reverseType = ReverseType.origin;
+    _reverseResult = null;
+    setState(() {});
+    _onGoMyPosition();
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -302,6 +356,7 @@ class _HomePageState extends State<HomePage> {
                             polygons: Set.of(_polygons.values),
                             onCameraMoveStarted: _onCameraMoveStarted,
                             onCameraMove: _onCameraMove,
+                            compassEnabled: false,
                             onMapCreated: (GoogleMapController controller) {
                               _mapController = controller;
                             },
@@ -311,7 +366,30 @@ class _HomePageState extends State<HomePage> {
                                   reverseResult: _reverseResult,
                                   containerHeight: constraints.maxHeight,
                                 )
-                              : Container()
+                              : Container(),
+                          Positioned(
+                            right: 20,
+                            top: 20,
+                            child: CupertinoButton(
+                              onPressed: _onGoMyPosition,
+                              padding: EdgeInsets.all(10),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(30),
+                              child: Icon(Icons.gps_fixed, color: Colors.black),
+                            ),
+                          ),
+                          WidgetAsMarker(
+                            markerKey: _originGlobalKey,
+                            dotColor: Colors.green,
+                            text: _origin != null ? _origin.address : "",
+                          ),
+                          WidgetAsMarker(
+                            markerKey: _destinationGlobalKey,
+                            dotColor: Colors.redAccent,
+                            text: _destination != null
+                                ? _destination.address
+                                : "",
+                          )
                         ],
                       );
                     },
@@ -319,44 +397,96 @@ class _HomePageState extends State<HomePage> {
                   panel: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      _isPanelOpen
-                          ? Toolbar(
-                              onSearch: _onSearch,
-                              onGoMyPosition: _onGoMyPosition,
-                              onClear: () {
-                                _panelController.close();
-                              },
-                              containerHeight: slidingUpPanelHeight,
-                            )
-                          : Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.all(15),
-                              child: CupertinoButton(
-                                onPressed: () {
-                                  _panelController.open();
-                                },
-                                color: Color(0xfff0f0f0),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 15),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: <Widget>[
-                                    Text(
-                                      "A donde quieres ir?",
-                                      textAlign: TextAlign.left,
-                                      style: TextStyle(
+                      _route == null
+                          ? _isPanelOpen
+                              ? Toolbar(
+                                  onSearch: _onSearch,
+                                  onGoMyPosition: _onGoMyPosition,
+                                  onClear: () {
+                                    _panelController.close();
+                                  },
+                                  containerHeight: slidingUpPanelHeight,
+                                )
+                              : Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(15),
+                                  child: CupertinoButton(
+                                    onPressed: () {
+                                      _panelController.open();
+                                    },
+                                    color: Color(0xfff0f0f0),
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 15, vertical: 15),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: <Widget>[
+                                        Text(
+                                          "A donde quieres ir?",
+                                          textAlign: TextAlign.left,
+                                          style: TextStyle(
+                                              color: Colors.black54,
+                                              fontSize: 19,
+                                              letterSpacing: 1),
+                                        ),
+                                        Icon(
+                                          Icons.search,
                                           color: Colors.black54,
-                                          fontSize: 19,
-                                          letterSpacing: 1),
+                                          size: 30,
+                                        )
+                                      ],
                                     ),
-                                    Icon(
-                                      Icons.search,
-                                      color: Colors.black54,
-                                      size: 30,
-                                    )
-                                  ],
-                                ),
+                                  ),
+                                )
+                          : Container(
+                              padding: EdgeInsets.all(15),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: <Widget>[
+                                  Row(
+                                    children: <Widget>[
+                                      Icon(
+                                        Icons.directions_car,
+                                        color: Colors.black38,
+                                        size: 40,
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                              "${_secondsToMinutes(_route['duration'])} min."),
+                                          Text(
+                                              "${_metersToKm(_route['distance'])} km."),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: <Widget>[
+                                      CupertinoButton(
+                                        color: Colors.red,
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 5),
+                                        borderRadius: BorderRadius.circular(30),
+                                        onPressed: _reset,
+                                        child: Text("CANCELAR",
+                                            style: TextStyle(fontSize: 14)),
+                                      ),
+                                      SizedBox(width: 5),
+                                      CupertinoButton(
+                                        color: Colors.blue,
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 5),
+                                        borderRadius: BorderRadius.circular(30),
+                                        onPressed: () {},
+                                        child: Text("CONFIRMAR",
+                                            style: TextStyle(fontSize: 14)),
+                                      )
+                                    ],
+                                  )
+                                ],
                               ),
                             )
                     ],
@@ -365,6 +495,14 @@ class _HomePageState extends State<HomePage> {
               ),
       ),
     );
+  }
+
+  int _secondsToMinutes(dynamic seconds) {
+    return (seconds / 60).ceil();
+  }
+
+  String _metersToKm(dynamic meters) {
+    return (meters / 1000).toStringAsFixed(2);
   }
 }
 
