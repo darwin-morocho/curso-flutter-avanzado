@@ -6,6 +6,7 @@ import 'package:flutter_advanced_maps/api/nominatim.dart';
 import 'package:flutter_advanced_maps/api/osrm.dart';
 import 'package:flutter_advanced_maps/models/reverse_result.dart';
 import 'package:flutter_advanced_maps/models/search_result.dart';
+import 'package:flutter_advanced_maps/models/service_location.dart';
 import 'package:flutter_advanced_maps/pages/home/widgets/my_center_position.dart';
 import 'package:flutter_advanced_maps/pages/home/widgets/toolbar.dart';
 import 'package:flutter_advanced_maps/utils/geolocation_utils.dart';
@@ -13,12 +14,18 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
+enum ReverseType { origin, destination }
+
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  ServiceLocation _origin, _destination;
+  Marker _originMarker = Marker(markerId: MarkerId("origin"));
+  Marker _destinationMarker = Marker(markerId: MarkerId("destination"));
+
   Nominatim _nominatim = Nominatim();
   OSRM _osrm = OSRM();
 
@@ -37,7 +44,7 @@ class _HomePageState extends State<HomePage> {
 
   LatLng _centerPosition, _myPosition;
   ReverseResult _reverseResult;
-  var _init = false, _isIdleEnabled = true;
+  ReverseType _reverseType = ReverseType.origin;
 
   @override
   void initState() {
@@ -48,10 +55,27 @@ class _HomePageState extends State<HomePage> {
         _reverseResult = result;
       });
 
-      if (_init) {
-        _osrm.route(_myPosition, _centerPosition);
+      final serviceLocation =
+          ServiceLocation(_centerPosition, result.displayName);
+
+      if (_reverseType == ReverseType.origin) {
+        _origin = serviceLocation;
+        _markers[_originMarker.markerId] =
+            _originMarker.copyWith(positionParam: _origin.position);
+        if (_destination == null) {
+          _reverseType = ReverseType.destination;
+        }
+      } else {
+        _destination = serviceLocation;
+        _markers[_destinationMarker.markerId] =
+            _destinationMarker.copyWith(positionParam: _destination.position);
       }
-      _init = true;
+
+      setState(() {});
+
+      if (_origin != null && _destination != null) {
+        _osrm.route(_origin.position, _destination.position);
+      }
     };
 
     _osrm.onRoute = _onRoute;
@@ -72,7 +96,6 @@ class _HomePageState extends State<HomePage> {
             LatLng(fitData['center']['lat'], fitData['center']['lng']);
         final zoom = fitData['zoom'] as double;
 
-        _isIdleEnabled = false;
         _moveCamera(center, zoom: zoom);
 
         final polyline = Polyline(
@@ -163,12 +186,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   _onCameraIdle() {
-    print("move finished");
-
-    if (_isIdleEnabled) {
+    if (_origin == null || _destination == null) {
       _nominatim.reverse(_centerPosition);
     }
-    _isIdleEnabled = true;
   }
 
   _onSearch(SearchResult result) {
@@ -245,10 +265,12 @@ class _HomePageState extends State<HomePage> {
                               _mapController = controller;
                             },
                           ),
-                          MyCenterPosition(
-                            reverseResult: _reverseResult,
-                            containerHeight: constraints.maxHeight,
-                          ),
+                          _origin == null || _destination == null
+                              ? MyCenterPosition(
+                                  reverseResult: _reverseResult,
+                                  containerHeight: constraints.maxHeight,
+                                )
+                              : Container()
                         ],
                       );
                     },
