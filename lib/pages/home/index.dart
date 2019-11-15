@@ -197,6 +197,7 @@ class _HomePageState extends State<HomePage> {
                 CupertinoDialogAction(
                   onPressed: () {
                     Navigator.pop(context);
+                    _reset();
                   },
                   child: Text("OK"),
                 )
