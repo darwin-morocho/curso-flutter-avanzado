@@ -7,8 +7,12 @@ import 'package:flutter_advanced_maps/api/osrm.dart';
 import 'package:flutter_advanced_maps/models/reverse_result.dart';
 import 'package:flutter_advanced_maps/models/search_result.dart';
 import 'package:flutter_advanced_maps/models/service_location.dart';
+import 'package:flutter_advanced_maps/pages/home/map_utils.dart';
 import 'package:flutter_advanced_maps/pages/home/widgets/my_center_position.dart';
+import 'package:flutter_advanced_maps/pages/home/widgets/request.dart';
 import 'package:flutter_advanced_maps/pages/home/widgets/toolbar.dart';
+import 'package:flutter_advanced_maps/pages/home/widgets/widget_as_marker.dart';
+import 'package:flutter_advanced_maps/utils/dialogs.dart';
 import 'package:flutter_advanced_maps/utils/geolocation_utils.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -22,6 +26,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final GlobalKey _originKey = GlobalKey(), _destinationKey = GlobalKey();
   ServiceLocation _origin, _destination;
   Marker _originMarker = Marker(markerId: MarkerId("origin"));
   Marker _destinationMarker = Marker(markerId: MarkerId("destination"));
@@ -45,6 +50,7 @@ class _HomePageState extends State<HomePage> {
   LatLng _centerPosition, _myPosition;
   ReverseResult _reverseResult;
   ReverseType _reverseType = ReverseType.origin;
+  dynamic _route;
 
   @override
   void initState() {
@@ -60,25 +66,78 @@ class _HomePageState extends State<HomePage> {
 
       if (_reverseType == ReverseType.origin) {
         _origin = serviceLocation;
-        _markers[_originMarker.markerId] =
-            _originMarker.copyWith(positionParam: _origin.position);
+
         if (_destination == null) {
           _reverseType = ReverseType.destination;
         }
       } else {
         _destination = serviceLocation;
-        _markers[_destinationMarker.markerId] =
-            _destinationMarker.copyWith(positionParam: _destination.position);
       }
 
       setState(() {});
 
       if (_origin != null && _destination != null) {
+        _drawOriginAndDestinationMarkers();
         _osrm.route(_origin.position, _destination.position);
       }
     };
 
     _osrm.onRoute = _onRoute;
+  }
+
+  _drawOriginAndDestinationMarkers() {
+    Timer(Duration(milliseconds: 500), () async {
+      final originBytes = await MapUtils.widgetToBytes(_originKey);
+      final destinationBytes = await MapUtils.widgetToBytes(_destinationKey);
+
+      setState(() {
+        _markers[_originMarker.markerId] = _originMarker.copyWith(
+            positionParam: _origin.position,
+            anchorParam: Offset(1,1.3),
+            iconParam: BitmapDescriptor.fromBytes(originBytes),
+            onTapParam: () => _onServiceMarkerPressed(ReverseType.origin));
+
+        _markers[_destinationMarker.markerId] = _destinationMarker.copyWith(
+            positionParam: _destination.position,
+            anchorParam: Offset(0.3,1.3),
+            iconParam: BitmapDescriptor.fromBytes(destinationBytes),
+            onTapParam: () => _onServiceMarkerPressed(ReverseType.destination));
+      });
+    });
+  }
+
+  _onServiceMarkerPressed(ReverseType reverseType) {
+    showCupertinoDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return CupertinoAlertDialog(
+            title: Text("Confirmación Requerida"),
+            content: Text(
+                "desea cambiar el ${reverseType == ReverseType.origin ? "origen" : "destino"} del servicio"),
+            actions: <Widget>[
+              CupertinoDialogAction(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text("NO"),
+              ),
+              CupertinoDialogAction(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (reverseType == ReverseType.origin) {
+                    _origin = null;
+                  } else {
+                    _destination = null;
+                  }
+                  _reverseType = reverseType;
+
+                  setState(() {});
+                },
+                child: Text("SI"),
+              )
+            ],
+          );
+        });
   }
 
   _onRoute(int status, dynamic data) {
@@ -87,6 +146,7 @@ class _HomePageState extends State<HomePage> {
     if (status == 200) {
       final routes = data['routes'] as List;
       if (routes.length > 0) {
+        this._route = routes[0];
         final encodedPolyline = routes[0]['geometry'] as String;
         List<LatLng> points =
             GeolocationUtils.decodeEncodedPolyline(encodedPolyline);
@@ -107,8 +167,31 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _polylines[polyline.polylineId] = polyline;
         });
+      } else {
+        Dialogs.showAlert(context,
+            title: "ERROR", body: "No se encontro una ruta", onOk: () {
+          _reset();
+        });
       }
+    } else {
+      Dialogs.showAlert(context,
+          title: status.toString(), body: data.toString(), onOk: () {
+        _reset();
+      });
     }
+  }
+
+  _reset() {
+    _origin = null;
+    _destination = null;
+    _reverseType = ReverseType.origin;
+    _markers.clear();
+    _polylines.clear();
+    _polygons.clear();
+    _reverseResult = null;
+    _route = null;
+
+    setState(() {});
   }
 
   _startTracking() {
@@ -270,7 +353,19 @@ class _HomePageState extends State<HomePage> {
                                   reverseResult: _reverseResult,
                                   containerHeight: constraints.maxHeight,
                                 )
-                              : Container()
+                              : Container(),
+                          WidgetAsMarker(
+                            repaintKey: _originKey,
+                            dotColor: Colors.green,
+                            text: _origin != null ? _origin.address : '',
+                          ),
+                          WidgetAsMarker(
+                            repaintKey: _destinationKey,
+                            dotColor: Colors.redAccent,
+                            text: _destination != null
+                                ? _destination.address
+                                : '',
+                          ),
                         ],
                       );
                     },
@@ -278,45 +373,51 @@ class _HomePageState extends State<HomePage> {
                   panel: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      _isPanelOpen
-                          ? Toolbar(
-                              onSearch: _onSearch,
-                              onGoMyPosition: _onGoMyPosition,
-                              onClear: () {
-                                _panelController.close();
-                              },
-                              containerHeight: slidingUpPanelHeight,
-                            )
-                          : Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.all(15),
-                              child: CupertinoButton(
-                                onPressed: () {
-                                  _panelController.open();
-                                },
-                                color: Color(0xfff0f0f0),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 15),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: <Widget>[
-                                    Text(
-                                      "A donde quieres ir?",
-                                      textAlign: TextAlign.left,
-                                      style: TextStyle(
+                      _route == null
+                          ? _isPanelOpen
+                              ? Toolbar(
+                                  onSearch: _onSearch,
+                                  onGoMyPosition: _onGoMyPosition,
+                                  onClear: () {
+                                    _panelController.close();
+                                  },
+                                  containerHeight: slidingUpPanelHeight,
+                                )
+                              : Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(15),
+                                  child: CupertinoButton(
+                                    onPressed: () {
+                                      _panelController.open();
+                                    },
+                                    color: Color(0xfff0f0f0),
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 15, vertical: 15),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: <Widget>[
+                                        Text(
+                                          "A donde quieres ir?",
+                                          textAlign: TextAlign.left,
+                                          style: TextStyle(
+                                              color: Colors.black54,
+                                              fontSize: 19,
+                                              letterSpacing: 1),
+                                        ),
+                                        Icon(
+                                          Icons.search,
                                           color: Colors.black54,
-                                          fontSize: 19,
-                                          letterSpacing: 1),
+                                          size: 30,
+                                        )
+                                      ],
                                     ),
-                                    Icon(
-                                      Icons.search,
-                                      color: Colors.black54,
-                                      size: 30,
-                                    )
-                                  ],
-                                ),
-                              ),
+                                  ),
+                                )
+                          : Request(
+                              onReset: _reset,
+                              onConfirm: () {},
+                              route: _route,
                             )
                     ],
                   ),
