@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -39,16 +40,9 @@ class _HomePageState extends State<HomePage> {
   _connectSocket() async {
     final token = await _authAPI.getAccessToken();
     await _socketClient.connect(token);
-    _socketClient.onNewMessage = (data) {
-      print("homePage new-message: ${data.toString()}");
-      final message = Message(
-          id: data['from']['id'],
-          message: data['message'],
-          username: data['from']['username'],
-          createdAt: DateTime.now());
-      _chat.addMessage(message);
-      _chatKey.currentState.checkUnread();
-    };
+    _socketClient.onNewMessage = (data) => _addOnNewMessage(data, true);
+
+    _socketClient.onNewFile = (data) => _addOnNewMessage(data, false);
 
     _socketClient.onConnected = (data) {
       final users = Map<String, dynamic>.from(data['connectedUsers']);
@@ -68,6 +62,17 @@ class _HomePageState extends State<HomePage> {
     };
   }
 
+  _addOnNewMessage(dynamic data, bool isText) {
+    final message = Message(
+        id: data['from']['id'],
+        message: isText ? data['message'] : data['file']['url'],
+        type: isText ? MessageType.text : data['file']['type'],
+        username: data['from']['username'],
+        createdAt: DateTime.now());
+    _chat.addMessage(message);
+    _chatKey.currentState.checkUnread();
+  }
+
   _onExit() {
     Dialogs.confirm(context, title: "COFIRM", message: "Are you sure?",
         onCancel: () {
@@ -80,15 +85,22 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  _sendMessage(String text) {
+  _sendMessage(String text, bool isText) {
     Message message = Message(
         id: _me.data.id,
         username: _me.data.username,
         message: text,
-        type: 'text',
+        type: isText ? MessageType.text : MessageType.image,
         createdAt: DateTime.now());
 
-    _socketClient.emit('send', text);
+    if (isText) {
+      _socketClient.emit('send', text);
+    } else {
+      _socketClient.emit('send-file', {
+        "type": MessageType.image,
+        "url": text,
+      });
+    }
 
     _chat.addMessage(message);
     _chatKey.currentState?.goToEnd();

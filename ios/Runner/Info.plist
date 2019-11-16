@@ -41,5 +41,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSPhotoLibraryUsageDescription</key>
+    <string>Para enviar fotos desde tu galeria por el chat necesitamos tu permiso</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Para enviar fotos desde tu cámara por el chat necesitamos tu permiso</string>
 </dict>
 </plist>

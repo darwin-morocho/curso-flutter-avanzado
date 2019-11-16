@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "20055990035",
+    "firebase_url": "https://secret-chat-141fc.firebaseio.com",
+    "project_id": "secret-chat-141fc",
+    "storage_bucket": "secret-chat-141fc.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:20055990035:android:63ab2d59151388275a04e6",
+        "android_client_info": {
+          "package_name": "ec.dina.flutter_secret_chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "20055990035-ur2tmaijkl55j50sjtoqnr3dguqp79jo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ec.dina.flutter_secret_chat",
+            "certificate_hash": "3f56cb35e07cf1e22b72d749f1016e6235055aa7"
+          }
+        },
+        {
+          "client_id": "20055990035-m3ve5sdl02p9tchsu02aefemvnqik2ks.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbXwYZ0CNESLsCW9ZSofBuI2Bts5hXWRU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "20055990035-m3ve5sdl02p9tchsu02aefemvnqik2ks.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "20055990035-08epkv8b89b8qv1pdbmet1qdv9d0n6k7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "ec.dina.flutterSecretChat"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

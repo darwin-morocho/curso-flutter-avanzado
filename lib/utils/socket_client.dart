@@ -2,6 +2,7 @@ import 'package:adhara_socket_io/adhara_socket_io.dart';
 import '../app_config.dart';
 
 typedef void OnNewMessage(dynamic data);
+typedef void OnNewFile(dynamic data);
 typedef void OnConnected(dynamic data);
 typedef void OnJoined(dynamic data);
 typedef void OnDisconnected(dynamic data);
@@ -10,6 +11,7 @@ class SocketClient {
   final _manager = SocketIOManager();
   SocketIO _socket;
   OnNewMessage onNewMessage;
+  OnNewFile onNewFile;
   OnConnected onConnected;
   OnJoined onJoined;
   OnDisconnected onDisconnected;
@@ -42,6 +44,12 @@ class SocketClient {
     _socket.on('new-message', (data) {
       if (onNewMessage != null) {
         onNewMessage(data);
+      }
+    });
+
+    _socket.on('new-file', (data) {
+      if (onNewFile != null) {
+        onNewFile(data);
       }
     });
 

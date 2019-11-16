@@ -7,12 +7,17 @@ import '../api/profile_api.dart';
 import '../models/user.dart';
 import '../providers/me.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+
 class SplashPage extends StatefulWidget {
   @override
   _SplashPageState createState() => _SplashPageState();
 }
 
 class _SplashPageState extends State<SplashPage> {
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final _authAPI = AuthAPI();
   final _profileAPI = ProfileAPI();
 
@@ -29,6 +34,15 @@ class _SplashPageState extends State<SplashPage> {
     final token = await _authAPI.getAccessToken();
 
     if (token != null) {
+
+      final FirebaseUser firebaseUser = (await _auth.signInAnonymously()).user;
+      assert(firebaseUser != null);
+      assert(firebaseUser.isAnonymous);
+
+
+      print("firebase Auth OK");
+
+
       final result = await _profileAPI.getUserInfo(context, token);
 
       final user = User.fromJson(result);
