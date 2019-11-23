@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
@@ -206,4 +207,55 @@ class MapUtils {
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     return byteData.buffer.asUint8List();
   }
+
+  static Future<Uint8List> customMarkerToBytes(
+      Color dotColor, String label) async {
+    ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(recorder);
+
+    final MyCustomMarker customMarker = MyCustomMarker(dotColor, label);
+    customMarker.paint(canvas, Size(500, 120));
+
+    final ui.Image image = await recorder.endRecording().toImage(500, 120);
+    final ByteData byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return byteData.buffer.asUint8List();
+  }
+}
+
+class MyCustomMarker extends CustomPainter {
+  final Color dotColor;
+  final String label;
+
+  MyCustomMarker(this.dotColor, this.label);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    paint.color = Colors.white;
+
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rRect = RRect.fromRectAndRadius(rect, Radius.circular(20));
+
+    canvas.drawRRect(rRect, paint);
+
+    paint.color = dotColor;
+    canvas.drawCircle(Offset(40, size.height / 2), 20, paint);
+
+    final textPainter = TextPainter(
+        text: TextSpan(
+            text: this.label,
+            style: TextStyle(color: Colors.black, fontSize: 20)),
+        textDirection: TextDirection.ltr,
+        maxLines: 2);
+
+    textPainter.layout(minWidth: 0, maxWidth: size.width - 80);
+
+    textPainter.paint(
+        canvas, Offset(80, size.height / 2 - textPainter.size.height / 2));
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

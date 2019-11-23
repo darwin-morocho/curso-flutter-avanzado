@@ -85,24 +85,24 @@ class _HomePageState extends State<HomePage> {
     _osrm.onRoute = _onRoute;
   }
 
-  _drawOriginAndDestinationMarkers() {
-    Timer(Duration(milliseconds: 500), () async {
-      final originBytes = await MapUtils.widgetToBytes(_originKey);
-      final destinationBytes = await MapUtils.widgetToBytes(_destinationKey);
+  _drawOriginAndDestinationMarkers() async {
+    final originBytes =
+        await MapUtils.customMarkerToBytes(Colors.green, _origin.address);
+    final destinationBytes = await MapUtils.customMarkerToBytes(
+        Colors.redAccent, _destination.address);
 
-      setState(() {
-        _markers[_originMarker.markerId] = _originMarker.copyWith(
-            positionParam: _origin.position,
-            anchorParam: Offset(1,1.3),
-            iconParam: BitmapDescriptor.fromBytes(originBytes),
-            onTapParam: () => _onServiceMarkerPressed(ReverseType.origin));
+    setState(() {
+      _markers[_originMarker.markerId] = _originMarker.copyWith(
+          positionParam: _origin.position,
+          anchorParam: Offset(1, 1.3),
+          iconParam: BitmapDescriptor.fromBytes(originBytes),
+          onTapParam: () => _onServiceMarkerPressed(ReverseType.origin));
 
-        _markers[_destinationMarker.markerId] = _destinationMarker.copyWith(
-            positionParam: _destination.position,
-            anchorParam: Offset(0.3,1.3),
-            iconParam: BitmapDescriptor.fromBytes(destinationBytes),
-            onTapParam: () => _onServiceMarkerPressed(ReverseType.destination));
-      });
+      _markers[_destinationMarker.markerId] = _destinationMarker.copyWith(
+          positionParam: _destination.position,
+          anchorParam: Offset(0.3, 1.3),
+          iconParam: BitmapDescriptor.fromBytes(destinationBytes),
+          onTapParam: () => _onServiceMarkerPressed(ReverseType.destination));
     });
   }
 
@@ -140,7 +140,7 @@ class _HomePageState extends State<HomePage> {
         });
   }
 
-  _onRoute(int status, dynamic data) async{
+  _onRoute(int status, dynamic data) async {
     print("$status");
 
     if (status == 200) {
@@ -164,29 +164,28 @@ class _HomePageState extends State<HomePage> {
             width: 5,
             color: Colors.cyan);
 
-
-        final startBytes = await MapUtils.loadPinFromAsset('assets/icons/green-circle.png',width: 55);
-        final endBytes = await MapUtils.loadPinFromAsset('assets/icons/red-circle.png',width: 55);
+        final startBytes = await MapUtils.loadPinFromAsset(
+            'assets/icons/green-circle.png',
+            width: 55);
+        final endBytes = await MapUtils.loadPinFromAsset(
+            'assets/icons/red-circle.png',
+            width: 55);
 
         final startPoint = Marker(
             markerId: MarkerId("start-point"),
-          position: points[0],
-          anchor: Offset(0.5,0.5),
-          icon: BitmapDescriptor.fromBytes(startBytes)
-        );
+            position: points[0],
+            anchor: Offset(0.5, 0.5),
+            icon: BitmapDescriptor.fromBytes(startBytes));
 
         final endPoint = Marker(
             markerId: MarkerId("end-point"),
-            anchor: Offset(0.5,0.5),
-            position: points[points.length-1],
-            icon: BitmapDescriptor.fromBytes(endBytes)
-        );
-
-
+            anchor: Offset(0.5, 0.5),
+            position: points[points.length - 1],
+            icon: BitmapDescriptor.fromBytes(endBytes));
 
         setState(() {
-          _markers[startPoint.markerId]= startPoint;
-          _markers[endPoint.markerId]= endPoint;
+          _markers[startPoint.markerId] = startPoint;
+          _markers[endPoint.markerId] = endPoint;
           _polylines[polyline.polylineId] = polyline;
         });
       } else {
@@ -388,7 +387,6 @@ class _HomePageState extends State<HomePage> {
                                 ? _destination.address
                                 : '',
                           ),
-
                           Positioned(
                             top: 10,
                             right: 10,
@@ -397,7 +395,10 @@ class _HomePageState extends State<HomePage> {
                               onPressed: _onGoMyPosition,
                               borderRadius: BorderRadius.circular(30),
                               padding: EdgeInsets.all(5),
-                              child: Icon(Icons.gps_fixed,color: Colors.black,),
+                              child: Icon(
+                                Icons.gps_fixed,
+                                color: Colors.black,
+                              ),
                             ),
                           )
                         ],
