@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_gelocation_tracking (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_gelocation_tracking (from `.symlinks/plugins/flutter_gelocation_tracking/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_gelocation_tracking:
+    :path: ".symlinks/plugins/flutter_gelocation_tracking/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
+  flutter_gelocation_tracking: e66acc73ef25bbd7af911dd6f3128a0fba578726
+
+PODFILE CHECKSUM: e45c292f618eeca3034958d33b444b6e1249b55f
+
+COCOAPODS: 1.7.3
